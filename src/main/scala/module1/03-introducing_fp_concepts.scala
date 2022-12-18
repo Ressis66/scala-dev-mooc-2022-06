@@ -266,11 +266,17 @@ object hof{
    * Реализовать метод printIfAny, который будет печатать значение, если оно есть
    */
 
+  def printIfAny [T](x: Option[T]): Unit = {
+    println(x.get)
+  }
 
   /**
    *
    * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
    */
+  def zip [T](x:Option[T], y:Option[T], f:(Option[T], Option[T])=> Option[T]): Option[T] = {
+    f(x,y)
+  }
 
 
   /**
@@ -278,6 +284,10 @@ object hof{
    * Реализовать метод filter, который будет возвращать не пустой Option
    * в случае если исходный не пуст и предикат от значения = true
    */
+  def filter [T](x: Some[T]):  Option[T]=
+    if(x.isEmpty) Option(x.get) else Option[Any]
+
+}
 
 
   object list {
@@ -307,17 +317,18 @@ object hof{
 
     case class A(var a: String)
 
-
     /**
      * Метод cons, добавляет элемент в голову списка, для этого метода можно воспользоваться названием `::`
      *
      */
+    def ::[A](elem: A, list: List[A]): List[A] =
+      list.::(elem)
 
     /**
      * Метод mkString возвращает строковое представление списка, с учетом переданного разделителя
      *
      */
-
+    def mkString (elem: String, list: List[A]): String = list.flatMap(List(elem, _)).toString
 
     /**
      * Конструктор, позволяющий создать список из N - го числа аргументов
@@ -327,23 +338,46 @@ object hof{
      * def printArgs(args: Int*) = args.foreach(println(_))
      */
 
-
+    def apply[A](v: A*): List[A] = if(v.isEmpty) List.Nil
+    else new ::(v.head, apply(v.tail:_*))
     /**
      *
      * Реализовать метод reverse который позволит заменить порядок элементов в списке на противоположный
      */
+
+    def reverse(s: List[A], acc: List[A]): List[A] = s match {
+      case _ => acc
+      case x :: xs => reverse(xs, x :: acc)
+    }
 
 
     /**
      *
      * Реализовать метод map для списка который будет применять некую ф-цию к элементам данного списка
      */
+    def map [B](f:A => B, list: List[A]): List[B] = {
+      for {
+        x <- list
+      } yield f(x)
+    }
 
 
     /**
      *
      * Реализовать метод filter для списка который будет фильтровать список по некому условию
      */
+    def filter(p: (A) => Boolean, list: List[A]): List[A] = {
+      val numberList = List[A]()
+      for {
+        x <- list
+      } yield {
+        if(p(x)==true)
+          numberList.::(x)
+      }
+      numberList
+    }
+
+
 
 
     /**
@@ -351,13 +385,33 @@ object hof{
      * Написать функцию incList котрая будет принимать список Int и возвращать список,
      * где каждый элемент будет увеличен на 1
      */
+    def incList (list: List[Int]):List[Int] = {
+      val numberList = List[Int]()
+      for {
+        x <- list
+      } yield {
+        val y = x + 1
+        numberList.::(y)
+      }
+      numberList
 
+    }
 
     /**
      *
      * Написать функцию shoutString котрая будет принимать список String и возвращать список,
      * где к каждому элементу будет добавлен префикс в виде '!'
      */
+    def shoutString (list: List[String]):List[String] = {
+      val stringList = List[String]()
+      for {
+        x <- list
+      } yield {
+        val y = "!" + x
+        stringList.::(y)
+      }
+      stringList
+    }
 
-  }
+
 }
