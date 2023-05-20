@@ -1,18 +1,11 @@
 package module1
 
 import mercator.Ops
-import module1.list.A
 import module1.list.List.::
-import module1.opt.Option
-import module2.dataStructures.nel1.:::
-import module2.higher_kinded_types.list1
 
 import java.util.UUID
 import scala.annotation.tailrec
-import java.time.Instant
-import scala.collection.immutable.Nil.:::
 import scala.language.postfixOps
-import scala.math.Equiv
 
 
 
@@ -274,9 +267,11 @@ object hof{
    *
    * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
    */
-  def zip [T](x:Option[T], y:Option[T], f:(Option[T], Option[T])=> Option[T]): Option[T] = {
-    f(x,y)
+  def zip[A, B](x: Option[A], y: Option[B]): Option[(A, B)] = (x,y) match {
+    case (u,v) => Option(u.get,v.get)
+    case _ => Option[Nothing]
   }
+
 
 
   /**
@@ -284,8 +279,9 @@ object hof{
    * Реализовать метод filter, который будет возвращать не пустой Option
    * в случае если исходный не пуст и предикат от значения = true
    */
-  def filter [T](x: Some[T]):  Option[T]=
-    if(x.isEmpty) Option(x.get) else Option[Any]
+  def filter[T](f: T => Boolean): Option[T] = {
+      if(f==true) Option[T] else Option[Nothing]
+  }
 
 }
 
@@ -300,19 +296,17 @@ object hof{
      */
 
     trait List[+T] {
-
       def ::[TT >: T](elem: TT): List[TT] = ???
 
     }
 
     object List {
       case class ::[A](head: A, tail: List[A]) extends List[A]
-
       case object Nil extends List[Nothing]
 
+      def apply[A](v: A*): List[A] =
+        if(v.isEmpty) Nil else ::(v.head, apply(v.tail:_*))
 
-      def apply[A](v: A*): List[A] = if (v.isEmpty) List.Nil
-      else new ::(v.head, apply(v.tail: _*))
     }
 
     case class A(var a: String)
@@ -321,14 +315,24 @@ object hof{
      * Метод cons, добавляет элемент в голову списка, для этого метода можно воспользоваться названием `::`
      *
      */
-    def ::[A](elem: A, list: List[A]): List[A] =
-      list.::(elem)
+    def ::[A](elem: A, list: List[A]): List[A] = list.::(elem)
+
 
     /**
      * Метод mkString возвращает строковое представление списка, с учетом переданного разделителя
      *
      */
-    def mkString (elem: String, list: List[A]): String = list.flatMap(List(elem, _)).toString
+    def mkString (el: String, list: List[A]): String = {
+      @tailrec
+      def f(list: List[A], el: String, acc: String = "["): String = list match {
+        case List.::(head, List.::(tail, List.Nil)) => s"$acc$head$el$tail]"
+        case List.::(head, tail) => f(tail, el, s"$acc$head$el ")
+        case List.Nil => acc ++ "]"
+      }
+
+      f(list, el)
+    }
+
 
     /**
      * Конструктор, позволяющий создать список из N - го числа аргументов
@@ -337,28 +341,29 @@ object hof{
      * Например вот этот метод принимает некую последовательность аргументов с типом Int и выводит их на печать
      * def printArgs(args: Int*) = args.foreach(println(_))
      */
+    def apply[A](v: A*): List[A] = if (v.isEmpty) List.Nil
+    else new ::(v.head, apply(v.tail: _*))
 
-    def apply[A](v: A*): List[A] = if(v.isEmpty) List.Nil
-    else new ::(v.head, apply(v.tail:_*))
     /**
      *
      * Реализовать метод reverse который позволит заменить порядок элементов в списке на противоположный
      */
 
     def reverse(s: List[A], acc: List[A]): List[A] = s match {
-      case _ => acc
       case x :: xs => reverse(xs, x :: acc)
+      case _ => acc
     }
-
 
     /**
      *
      * Реализовать метод map для списка который будет применять некую ф-цию к элементам данного списка
      */
-    def map [B](f:A => B, list: List[A]): List[B] = {
-      for {
-        x <- list
-      } yield f(x)
+    def map [B](lst: List[A], f:A => B): List[B] = {
+      val list: List[B] = List()
+      lst match {
+        case x :: xs => list.::(f(x))
+        }
+      list
     }
 
 
@@ -366,19 +371,14 @@ object hof{
      *
      * Реализовать метод filter для списка который будет фильтровать список по некому условию
      */
+
     def filter(p: (A) => Boolean, list: List[A]): List[A] = {
-      val numberList = List[A]()
-      for {
-        x <- list
-      } yield {
-        if(p(x)==true)
-          numberList.::(x)
+      val list1 =List()
+      list match {
+        case x:: xs if p(x) => list1.::(x)
       }
-      numberList
+     list1
     }
-
-
-
 
     /**
      *
@@ -386,15 +386,7 @@ object hof{
      * где каждый элемент будет увеличен на 1
      */
     def incList (list: List[Int]):List[Int] = {
-      val numberList = List[Int]()
-      for {
-        x <- list
-      } yield {
-        val y = x + 1
-        numberList.::(y)
-      }
-      numberList
-
+      list.map(x => x+1)
     }
 
     /**
@@ -403,15 +395,7 @@ object hof{
      * где к каждому элементу будет добавлен префикс в виде '!'
      */
     def shoutString (list: List[String]):List[String] = {
-      val stringList = List[String]()
-      for {
-        x <- list
-      } yield {
-        val y = "!" + x
-        stringList.::(y)
-      }
-      stringList
+      list.map(x => "!" + x)
     }
 
-
-}
+    }
