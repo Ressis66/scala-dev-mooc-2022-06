@@ -202,91 +202,78 @@ object hof{
  *  Реализуем тип Option
  */
 
+  object opt {
 
- object opt {
+    /**
+     *
+     * Реализовать структуру данных Option, который будет указывать на присутствие либо отсутсвие результата
+     */
 
-  /**
-   *
-   * Реализовать тип Option, который будет указывать на присутствие либо отсутсвие результата
-   */
-
-  // Covariant - animal родитель dog, Option[Animal] родитель Option[Dog]
-  // Contravariant - animal родитель dog, Option[Dog] родитель Option[Animal]
-  // Invariant - нет отношений
-
-  // Вопрос вариантности
-
-  trait Option[+T] {
+    // Animal -> Dog
+    // Covariant + отношения переносятся на контейнер
+    // Contravariant - отношения переносятся на контейнер наоборот
+    // Invariant - нет отношений
 
 
-    def isEmpty: Boolean = this match {
-      case Option.None => true
-      case Option.Some(v) => false
+    sealed trait Option[+T]{
+      def isEmpty: Boolean = this match {
+        case Option.Some(v) => false
+        case Option.None => true
+      }
+
+      def map[B](f: T => B): Option[B] =
+        flatMap(v => Option.Some(f(v)))
+
+      def flatMap[B](f: T => Option[B]): Option[B] = this match {
+        case Option.Some(v) => f(v)
+        case Option.None => Option.None
+      }
+
+      /**
+       *
+       * Реализовать метод printIfAny, который будет печатать значение, если оно есть
+       */
+      def printIfAny(): Unit = this match {
+        case Option.Some(v) => println(v)
+        case Option.None =>
+      }
+
+      /**
+       *
+       * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
+       */
+      def zip[B](that: Option[B]): Option[(T, B)] = (this, that) match {
+        case (Option.Some(x), Option.Some(y)) => Option.Some((x, y))
+        case _ => Option.None
+      }
+
+      /**
+       *
+       * Реализовать метод filter, который будет возвращать не пустой Option
+       * в случае если исходный не пуст и предикат от значения = true
+       */
+      def filter(f: T => Boolean): Option[T] = this match {
+        case Option.Some(v) => if (f(v)) Option.Some(v) else Option.None
+        case Option.None => Option.None
+      }
+
     }
 
-    def get: T = this match {
-      case Option.Some(v) => v
-      case Option.None => throw new Exception("get on empty Option")
-    }
+    object Option{
 
-    def map[B](f: T => B): Option[B] =
-      flatMap(v => Option(f(v)))
-
-    def flatMap[B](f: T => Option[B]): Option[B] = this match {
-      case Option.None => Option.None
-      case Option.Some(v) => f(v)
+      case class Some[T](v: T) extends Option[T]
+      case object None extends Option[Nothing]
     }
 
   }
-
-  val a: Option[Int] = ???
-
-  val r: Option[Int] = a.map(i => i + 1)
-
-
-  object Option {
-
-    final case class Some[T](v: T) extends Option[T]
-
-    final case object None extends Option[Nothing]
-
-    def apply[T](v: T): Option[T] = Some(v)
-  }
-
-
-  /**
-   *
-   * Реализовать метод printIfAny, который будет печатать значение, если оно есть
-   */
-
-  def printIfAny [T](x: Option[T]): Unit = {
-    println(x.get)
-  }
-
-  /**
-   *
-   * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
-   */
-  def zip[A, B](x: Option[A], y: Option[B]): Option[(A, B)] = (x,y) match {
-    case (u,v) => Option(u.get,v.get)
-    case _ => Option[Nothing]
-  }
-
-
-
-  /**
-   *
-   * Реализовать метод filter, который будет возвращать не пустой Option
-   * в случае если исходный не пуст и предикат от значения = true
-   */
-  def filter[T](f: T => Boolean): Option[T] = {
-      if(f==true) Option[T] else Option[Nothing]
-  }
-
-}
 
 
   object list {
+
+    case class Cons[+A](head:A, tail:List[A]) extends List[A] {
+      override def ::[B >: A](a: B): List[B] = Cons(a, head :: tail)
+    }
+
     /**
      *
      * Реализовать односвязанный иммутабельный список List
@@ -296,9 +283,10 @@ object hof{
      */
 
     trait List[+T] {
-      def ::[TT >: T](elem: TT): List[TT] = ???
 
+      def ::[TT >: T](elem: TT): List[TT]=  List.::(elem, this)
     }
+
 
     object List {
       case class ::[A](head: A, tail: List[A]) extends List[A]
@@ -315,7 +303,7 @@ object hof{
      * Метод cons, добавляет элемент в голову списка, для этого метода можно воспользоваться названием `::`
      *
      */
-    def ::[A](elem: A, list: List[A]): List[A] = list.::(elem)
+    def cons[A](elem: A, list: List[A]): List[A] = list.::(elem)
 
 
     /**
@@ -342,29 +330,35 @@ object hof{
      * def printArgs(args: Int*) = args.foreach(println(_))
      */
     def apply[A](v: A*): List[A] = if (v.isEmpty) List.Nil
-    else new ::(v.head, apply(v.tail: _*))
+    else ::(v.head, apply(v.tail: _*))
 
     /**
      *
      * Реализовать метод reverse который позволит заменить порядок элементов в списке на противоположный
      */
 
-    def reverse(s: List[A], acc: List[A]): List[A] = s match {
-      case x :: xs => reverse(xs, x :: acc)
-      case _ => acc
+    def reverse[A](s: List[A]): List[A] = {
+      @tailrec
+      def f(xs: List[A], acc: List[A] = List.Nil): List[A] = xs match {
+        case List.::(head, tail) => f(tail, head :: acc)
+        case List.Nil => acc
+      }
+      f(s)
     }
 
     /**
      *
      * Реализовать метод map для списка который будет применять некую ф-цию к элементам данного списка
      */
-    def map [B](lst: List[A], f:A => B): List[B] = {
-      val list: List[B] = List()
-      lst match {
-        case x :: xs => list.::(f(x))
-        }
-      list
+    def map [B](lst: List[A], fun:A => B): List[B] = {
+      @tailrec
+      def f[T, Y](xs: List[T], g: T => Y, acc: List[Y] = List.Nil): List[Y] = xs match {
+        case List.::(head, tail) => f(tail, g, cons(g(head), acc))
+        case List.Nil => acc
+      }
+      reverse(f(lst, fun))
     }
+
 
 
     /**
@@ -373,11 +367,15 @@ object hof{
      */
 
     def filter(p: (A) => Boolean, list: List[A]): List[A] = {
-      val list1 =List()
-      list match {
-        case x:: xs if p(x) => list1.::(x)
+      @tailrec
+      def f[T](xs: List[T], p: T => Boolean, acc: List[T] = List.Nil): List[T] = xs match {
+        case List.::(head, tail) if p(head) => f(tail, p, cons(head, acc))
+        case List.::(_, tail)  => f(tail, p, acc)
+        case List.Nil => acc
       }
-     list1
+
+      reverse(f(list, p))
+
     }
 
     /**
